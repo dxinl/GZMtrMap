@@ -1,0 +1,4 @@
+<resources>
+	<string name="app_name">GZMtrMap</string>
+	<string name="copy_db_failed">Moving DB from Assets was failed.</string>
+</resources>
