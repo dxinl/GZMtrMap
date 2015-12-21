@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Build;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -24,7 +25,7 @@ import java.util.Map;
 public class MtrView extends View {
 	// 每个地图坐标单位中包括了几个unit
 	private final float numOfUnitInEveryMapCoordinate = 3f;
-	private final int INFINITY = 999999;
+	private final String joiner = "->";
 	private final Paint paint = new Paint();
 
 	private List<Node> nodes;
@@ -317,7 +318,7 @@ public class MtrView extends View {
 
 	private void drawLine(Canvas canvas, Node node, List<Node> nodeDrewLine,
 	                      float unit, float absoluteX, float absoluteY, float centerX, float centerY) {
-		for (Node neighbor : node.neighbors) {
+		for (Node neighbor : node.neighborsDist.keySet()) {
 			if (nodeDrewLine.contains(neighbor)) {
 				continue;
 			}
@@ -451,6 +452,7 @@ public class MtrView extends View {
 		HashMap<Node, Integer> distances = new HashMap<>();
 		HashMap<Node, Node> preNodes = new HashMap<>();
 
+		int INFINITY = 999999;
 		for (Node node : nodes) {
 			if (node == startNode) {
 				distances.put(node, 0);
@@ -461,21 +463,44 @@ public class MtrView extends View {
 
 		List<Node> tmpList = new ArrayList<>();
 		tmpList.addAll(nodes);
-		Node curNode = startNode;
 		while (tmpList.size() > 0) {
-			tmpList.remove(curNode);
+
 			int min = INFINITY;
-			for (Node neighbor : curNode.neighbors) {
-				int dist = curNode.neighborsDist.get(neighbor) + distances.get(curNode);
+			Node minNode = null;
+			for (Node node : tmpList) {
+				if (distances.get(node) < min) {
+					minNode = node;
+					min = distances.get(node);
+				}
+			}
+			if (minNode == null) {
+				break;
+			}
+
+			tmpList.remove(minNode);
+			for (Node neighbor : minNode.neighborsDist.keySet()) {
+				int dist = minNode.neighborsDist.get(neighbor) + distances.get(minNode);
 				if (tmpList.contains(neighbor) && distances.get(neighbor) > dist) {
 					distances.put(neighbor, dist);
+					preNodes.put(neighbor, minNode);
 				}
-				if (dist < min) {
-
-				}
+			}
+			if (minNode == endNode) {
+				break;
 			}
 		}
 
+		Node node = endNode;
+		while (true) {
+			String name = node.name;
+			node = preNodes.get(node);
+			if (node != null) {
+				route = joiner + name + route;
+			} else {
+				route = name + route;
+				break;
+			}
+		}
 		return route;
 	}
 }

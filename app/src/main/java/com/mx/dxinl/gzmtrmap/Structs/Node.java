@@ -12,8 +12,6 @@ public class Node {
 	public final int y;
 	public List<Line> lines;
 	public String color;
-	public List<Node> neighbors;
-	public List<Integer> distances;
 	public HashMap<Node, Integer> neighborsDist;
 
 	public Node(String name, int x, int y) {

@@ -8,6 +8,7 @@ import com.mx.dxinl.gzmtrmap.Structs.Line;
 import com.mx.dxinl.gzmtrmap.Structs.Node;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -51,12 +52,14 @@ public class DbUtils {
 		return value;
 	}
 
-	public static List<String> getNeighbors(SQLiteDatabase db, String nodeName) {
-		List<String> neighbors = new ArrayList<>();
-		String sql = String.format("SELECT neighbor FROM Neighbor WHERE name = \"%s\"", nodeName);
+	public static HashMap<String, Integer> getNeighbors(SQLiteDatabase db, String nodeName) {
+		HashMap<String, Integer> neighbors = new HashMap<>();
+		String sql = String.format("SELECT neighbor, dist FROM Neighbor WHERE name = \"%s\"", nodeName);
 		Cursor cursor = db.rawQuery(sql, null);
 		while (cursor.moveToNext()) {
-			neighbors.add(cursor.getString(cursor.getColumnIndex("neighbor")));
+			String name = cursor.getString(cursor.getColumnIndex("neighbor"));
+			int dist = cursor.getInt(cursor.getColumnIndex("dist"));
+			neighbors.put(name, dist);
 		}
 		cursor.close();
 		return neighbors;

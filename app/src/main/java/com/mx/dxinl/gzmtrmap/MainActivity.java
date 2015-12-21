@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
 import com.mx.dxinl.gzmtrmap.Structs.Line;
@@ -33,6 +35,8 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 	private TextView start;
 	private TextView end;
 
+	private String startNodeName, endNodeName;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -40,6 +44,12 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 		mtr = (MtrView) findViewById(R.id.mtr);
 		start = (TextView) findViewById(R.id.start);
 		end = (TextView) findViewById(R.id.end);
+		end.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				Log.e("path", mtr.findRoute(startNodeName, endNodeName));
+			}
+		});
 
 		Map<String, Integer> colorMap = new HashMap<>();
 		colorMap.put("blue", R.color.blue);
@@ -123,17 +133,17 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 				} else {
 					node.color = "black";
 				}
-				List<String> neighborNames = DbUtils.getNeighbors(db, node.name);
-				List<Node> neighbors = new ArrayList<>();
-				for (String neighborName : neighborNames) {
+				HashMap<String, Integer> neighborsMap = DbUtils.getNeighbors(db, node.name);
+				HashMap<Node, Integer> neighborsDist = new HashMap<>();
+				for (String neighborName : neighborsMap.keySet()) {
 					for (Node tmpNode : nodes) {
 						if (tmpNode.name.equals(neighborName)) {
-							neighbors.add(tmpNode);
+							neighborsDist.put(tmpNode, neighborsMap.get(neighborName));
 							break;
 						}
 					}
 				}
-				node.neighbors = neighbors;
+				node.neighborsDist = neighborsDist;
 			}
 			mtr.setNodes(nodes, maxMapCoordinate);
 		}
@@ -141,11 +151,13 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 
 	@Override
 	public void setStartNode(String name) {
+		startNodeName = name;
 		start.setText("start: " + name);
 	}
 
 	@Override
 	public void setEndNode(String name) {
+		endNodeName = name;
 		end.setText("end: " + name);
 	}
 }
