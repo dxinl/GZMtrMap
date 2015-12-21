@@ -3,19 +3,18 @@ package com.mx.dxinl.gzmtrmap;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.RelativeLayout;
 
 import com.mx.dxinl.gzmtrmap.Structs.Line;
 import com.mx.dxinl.gzmtrmap.Structs.Node;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +24,7 @@ import java.util.Map;
 public class MtrView extends View {
 	// 每个地图坐标单位中包括了几个unit
 	private final float numOfUnitInEveryMapCoordinate = 3f;
+	private final int INFINITY = 999999;
 	private final Paint paint = new Paint();
 
 	private List<Node> nodes;
@@ -45,7 +45,9 @@ public class MtrView extends View {
 	private float clickY;
 	private int saveClickX;
 	private int saveClickY;
-	private Button btn;
+	private boolean isStart = true;
+
+	private ChoseNodeListener listener;
 
 	public MtrView(Context context) {
 		super(context);
@@ -162,7 +164,6 @@ public class MtrView extends View {
 		}
 
 		paint.setFlags(Paint.ANTI_ALIAS_FLAG);
-		paint.setStyle(Paint.Style.FILL_AND_STROKE);
 		if (clickX != 0f && clickY != 0f) {
 			zoomDraw(canvas);
 			clickX = clickY = 0f;
@@ -196,10 +197,6 @@ public class MtrView extends View {
 			if (saveClickX == node.x && saveClickY == node.y) {
 				drawClickCircle(canvas, unit, absoluteX, absoluteY);
 			}
-
-			if (btn != null) {
-				btn.setVisibility(GONE);
-			}
 		}
 		nodeDrewLine.clear();
 	}
@@ -209,11 +206,10 @@ public class MtrView extends View {
 		boolean isFoundClick = true;
 		if (clickX != 0f && clickY != 0f) {
 			isFoundClick = false;
-		} else if (btn != null) {
-			btn.setVisibility(GONE);
 		}
 
 		List<Node> nodeDrewLine = new ArrayList<>();
+		Node choseNode = null;
 		for (Node node : nodes) {
 			float relativeCenterX = getRelativeCenter(centerX, multiTouchCenterX, newUnit);
 			float relativeCenterY = getRelativeCenter(centerY, multiTouchCenterY, newUnit);
@@ -236,36 +232,15 @@ public class MtrView extends View {
 				saveClickX = node.x;
 				saveClickY = node.y;
 				isFoundClick = true;
-				if (btn == null) {
-					btn = new Button(getContext());
-				}
-				if (btn.getParent() != null) {
-					((ViewGroup) btn.getParent()).removeView(btn);
-				}
-
-				btn.setText(node.name);
-				btn.setVisibility(VISIBLE);
-				if (getParent() instanceof RelativeLayout) {
-					RelativeLayout layout = (RelativeLayout) getParent();
-					RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-							ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-					if (getWidth() - absoluteX < btn.getWidth()) {
-						params.leftMargin = getWidth() - btn.getWidth();
-					} else {
-						params.leftMargin = (int) (absoluteX + newUnit);
-					}
-
-					if (getHeight() - absoluteY < btn.getWidth()) {
-						params.topMargin = (int) (absoluteY - newUnit) - btn.getHeight();
-					} else {
-						params.topMargin = (int) (absoluteY + newUnit);
-					}
-					layout.addView(btn, params);
-				}
+			} else if (!isFoundClick
+					&& clickX - absoluteX < newUnit * 8f && absoluteX <= clickX
+					&& Math.abs(absoluteY - clickY) < newUnit * 2f && listener != null) {
+				choseNode = node;
 			}
 
 			if (isFoundClick && saveClickX == node.x && saveClickY == node.y) {
 				drawClickCircle(canvas, newUnit, absoluteX, absoluteY);
+				drawChoseAsStartOrEnd(canvas, newUnit, absoluteX, absoluteY);
 			}
 
 			drawName(canvas, node, absoluteX, absoluteY, newUnit);
@@ -273,6 +248,16 @@ public class MtrView extends View {
 		nodeDrewLine.clear();
 		if (!isFoundClick) {
 			saveClickY = saveClickX = -maxMapCoordinate;
+			if (choseNode == null) {
+				return;
+			}
+
+			if (isStart) {
+				listener.setStartNode(choseNode.name);
+			} else {
+				listener.setEndNode(choseNode.name);
+			}
+			isStart = !isStart;
 		}
 	}
 
@@ -322,13 +307,10 @@ public class MtrView extends View {
 
 			if (saveClickX == node.x && saveClickY == node.y) {
 				drawClickCircle(canvas, newUnit, absoluteX, absoluteY);
+				drawChoseAsStartOrEnd(canvas, newUnit, absoluteX, absoluteY);
 			}
 
 			drawName(canvas, node, absoluteX, absoluteY, newUnit);
-
-			if (btn != null) {
-				btn.setVisibility(GONE);
-			}
 		}
 		nodeDrewLine.clear();
 	}
@@ -342,6 +324,7 @@ public class MtrView extends View {
 			int colorId = getColorId(node, neighbor);
 			paint.setColor(getResources().getColor(colorId));
 			paint.setStrokeWidth(unit);
+			paint.setStyle(Paint.Style.FILL_AND_STROKE);
 			float neighborAbsoluteX = getAbsoluteXCoordinate(neighbor.x, centerX, unit);
 			float neighborAbsoluteY = getAbsoluteYCoordinate(neighbor.y, centerY, unit);
 			canvas.drawLine(absoluteX, absoluteY, neighborAbsoluteX, neighborAbsoluteY, paint);
@@ -352,11 +335,13 @@ public class MtrView extends View {
 	                        float absoluteX, float absoluteY, float radius) {
 		int colorId = getColorId(node.color);
 		paint.setStrokeWidth(unit);
+		paint.setStyle(Paint.Style.FILL_AND_STROKE);
 		paint.setColor(getResources().getColor(colorId));
 		canvas.drawCircle(absoluteX, absoluteY, radius, paint);
 	}
 
 	private void drawClickCircle(Canvas canvas, float newUnit, float absoluteX, float absoluteY) {
+		paint.setStyle(Paint.Style.FILL_AND_STROKE);
 		paint.setColor(getResources().getColor(R.color.red));
 		canvas.drawCircle(absoluteX, absoluteY, 1.25f * newUnit, paint);
 	}
@@ -364,9 +349,28 @@ public class MtrView extends View {
 	private void drawName(Canvas canvas, Node node, float absoluteX, float absoluteY, float newUnit) {
 		if (zoomSize > unit * 30f) {
 			paint.setTextSize(newUnit * 2f);
+			paint.setStyle(Paint.Style.FILL);
 			paint.setColor(getResources().getColor(R.color.black));
 			canvas.drawText(node.name, absoluteX + newUnit, absoluteY + newUnit * 3f, paint);
 		}
+	}
+
+	private void drawChoseAsStartOrEnd(Canvas canvas, float newUnit, float absoluteX, float absoluteY) {
+		if (zoomSize > unit * 30f) {
+			int leftMargin = (int) (absoluteX + newUnit);
+			int topMargin = (int) (absoluteY - newUnit);
+
+			paint.setStyle(Paint.Style.FILL);
+			paint.setColor(getResources().getColor(R.color.green));
+			canvas.drawRect(leftMargin, topMargin, leftMargin + newUnit * 8f, topMargin + newUnit * 2.5f, paint);
+			paint.setColor(Color.WHITE);
+			String txt = getResources().getString(R.string.chose_as_start);
+			if (!isStart) {
+				txt = getResources().getString(R.string.chose_as_end);
+			}
+			canvas.drawText(txt, leftMargin, topMargin + newUnit * 2f, paint);
+		}
+
 	}
 
 	private float getAbsoluteXCoordinate(int mapCoordinate, float centerX, float unit) {
@@ -418,5 +422,60 @@ public class MtrView extends View {
 
 	public void setColorMap(Map<String, Integer> colorMap) {
 		this.colorMap = colorMap;
+	}
+
+	public void setChoseNodeListener(ChoseNodeListener listener) {
+		this.listener = listener;
+	}
+
+	public String findRoute(String startName, String endName) {
+		Node startNode = null;
+		Node endNode = null;
+		for (Node node : nodes) {
+			if (node.name.equals(startName)) {
+				startNode = node;
+			} else if (node.name.equals(endName)) {
+				endNode = node;
+			}
+
+			if (startNode != null && endNode != null) {
+				break;
+			}
+		}
+		return findRoute(startNode, endNode);
+	}
+
+	public String findRoute(Node startNode, Node endNode) {
+		String route = new String();
+
+		HashMap<Node, Integer> distances = new HashMap<>();
+		HashMap<Node, Node> preNodes = new HashMap<>();
+
+		for (Node node : nodes) {
+			if (node == startNode) {
+				distances.put(node, 0);
+			} else {
+				distances.put(node, INFINITY);
+			}
+		}
+
+		List<Node> tmpList = new ArrayList<>();
+		tmpList.addAll(nodes);
+		Node curNode = startNode;
+		while (tmpList.size() > 0) {
+			tmpList.remove(curNode);
+			int min = INFINITY;
+			for (Node neighbor : curNode.neighbors) {
+				int dist = curNode.neighborsDist.get(neighbor) + distances.get(curNode);
+				if (tmpList.contains(neighbor) && distances.get(neighbor) > dist) {
+					distances.put(neighbor, dist);
+				}
+				if (dist < min) {
+
+				}
+			}
+		}
+
+		return route;
 	}
 }

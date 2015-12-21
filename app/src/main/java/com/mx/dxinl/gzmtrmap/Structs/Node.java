@@ -1,9 +1,7 @@
 package com.mx.dxinl.gzmtrmap.Structs;
 
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Created by dxinl on 2015/12/19.
@@ -15,6 +13,8 @@ public class Node {
 	public List<Line> lines;
 	public String color;
 	public List<Node> neighbors;
+	public List<Integer> distances;
+	public HashMap<Node, Integer> neighborsDist;
 
 	public Node(String name, int x, int y) {
 		this.name = name;

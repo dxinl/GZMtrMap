@@ -1,35 +1,50 @@
 package com.mx.dxinl.gzmtrmap.Utils;
 
+import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
+import android.os.Environment;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import android.content.Context;
-import android.database.sqlite.SQLiteDatabase;
-import android.os.Environment;
-
 public class AssetDatabaseOpenHelper {
-	private final String DB_NAME;
 	private final Context context;
+	private final String dir;
+	private final String DB_NAME;
 
-	public AssetDatabaseOpenHelper(Context context, String dbName) {
+	public AssetDatabaseOpenHelper(Context context, String dir, String dbName) {
 		this.context = context;
+		this.dir = dir;
 		this.DB_NAME = dbName;
 	}
 
 	public SQLiteDatabase openDatabase() {
-		String dir = Environment.getExternalStorageDirectory().getPath() + "/" + context.getPackageName() + "/databases";
-		File dirFile = new File(dir);
-		if (!dirFile.exists() || !dirFile.isDirectory() && !dirFile.mkdirs()) {
-			return null;
+		String dbDir = Environment.getExternalStorageDirectory().getPath();
+		String separator = "/";
+		String[] paths = dir.split(separator);
+		for (String path : paths) {
+			dbDir = dbDir + separator + path;
+			File file = new File(dbDir);
+			if (!file.exists() || !file.isDirectory()) {
+				if (!file.mkdir()) {
+					return null;
+				}
+			}
 		}
-		File dbFile = new File(dir + "/" + DB_NAME);
 
+		File dbFile = new File(dbDir + separator + DB_NAME);
 		try {
+			if (!dbFile.exists() || !dbFile.isFile()) {
+				if (!dbFile.createNewFile()) {
+					throw new IOException("Create File Failed.");
+				}
+			}
 			copyDatabase(dbFile);
 		} catch (IOException e) {
+			e.printStackTrace();
 			throw new RuntimeException("Error creating source database", e);
 		}
 
@@ -38,9 +53,6 @@ public class AssetDatabaseOpenHelper {
 
 	private void copyDatabase(File dbFile) throws IOException {
 		InputStream is = context.getAssets().open(DB_NAME);
-		if (!dbFile.exists() || !dbFile.isFile() && dbFile.createNewFile()) {
-			throw new IOException("Create File Failed.");
-		}
 		OutputStream os = new FileOutputStream(dbFile);
 
 		byte[] buffer = new byte[1024];

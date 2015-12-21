@@ -6,8 +6,25 @@
 	android:layout_height="match_parent"
 	tools:context="com.mx.dxinl.gzmtrmap.MainActivity">
 
+	<TextView
+		android:id="@+id/start"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignParentBottom="true"
+		android:text="@string/app_name"/>
+
+	<TextView
+		android:id="@+id/end"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignParentBottom="true"
+		android:layout_toEndOf="@id/start"
+		android:layout_toRightOf="@id/start"
+		android:text="@string/app_name"/>
+
 	<com.mx.dxinl.gzmtrmap.MtrView
 		android:id="@+id/mtr"
 		android:layout_width="match_parent"
-		android:layout_height="match_parent"/>
+		android:layout_height="match_parent"
+		android:layout_above="@id/start"/>
 </RelativeLayout>

@@ -4,34 +4,42 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteDatabase;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.os.Environment;
+import android.support.v7.app.AppCompatActivity;
+import android.widget.TextView;
 
 import com.mx.dxinl.gzmtrmap.Structs.Line;
 import com.mx.dxinl.gzmtrmap.Structs.Node;
 import com.mx.dxinl.gzmtrmap.Utils.AssetDatabaseOpenHelper;
 import com.mx.dxinl.gzmtrmap.Utils.DbUtils;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements ChoseNodeListener {
 	private static final String TAG = "GZMtrMap";
 	private static final String VERSION = "version";
-	private static final String SYSTEM_DB_PATH1 = "/data/data/%s/database/";
+	private static final String DB_DIR = "/databases";
 	private static final String DB_NAME = "mtr.db";
+	private static final String SEPARATOR = "/";
 
 	private boolean initialize = true;
 
 	private MtrView mtr;
+	private TextView start;
+	private TextView end;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		mtr = (MtrView) findViewById(R.id.mtr);
+		start = (TextView) findViewById(R.id.start);
+		end = (TextView) findViewById(R.id.end);
 
 		Map<String, Integer> colorMap = new HashMap<>();
 		colorMap.put("blue", R.color.blue);
@@ -47,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
 		colorMap.put("red", R.color.red);
 		colorMap.put("black", R.color.black);
 		mtr.setColorMap(colorMap);
+		mtr.setChoseNodeListener(this);
 	}
 
 	@Override
@@ -69,10 +78,23 @@ public class MainActivity extends AppCompatActivity {
 			versionName = "unknown";
 		}
 
+		String dir = getPackageName() + DB_DIR;
 		SQLiteDatabase db = null;
 		if (!version.equals(versionName)) {
-			AssetDatabaseOpenHelper dbHelper = new AssetDatabaseOpenHelper(this, DB_NAME);
+			AssetDatabaseOpenHelper dbHelper = new AssetDatabaseOpenHelper(this, dir, DB_NAME);
 			db = dbHelper.openDatabase();
+
+			SharedPreferences.Editor editor = sp.edit();
+			editor.putString(VERSION, versionName).apply();
+		} else {
+			String dbDir = Environment.getExternalStorageDirectory().getPath() + SEPARATOR + dir + SEPARATOR + DB_NAME;
+			File file = new File(dbDir);
+			if (!file.exists() || !file.isFile()) {
+				AssetDatabaseOpenHelper dbHelper = new AssetDatabaseOpenHelper(this, dir, DB_NAME);
+				db = dbHelper.openDatabase();
+			} else {
+				db = SQLiteDatabase.openDatabase(dbDir, null, SQLiteDatabase.OPEN_READONLY);
+			}
 		}
 
 		if (db != null) {
@@ -115,5 +137,15 @@ public class MainActivity extends AppCompatActivity {
 			}
 			mtr.setNodes(nodes, maxMapCoordinate);
 		}
+	}
+
+	@Override
+	public void setStartNode(String name) {
+		start.setText("start: " + name);
+	}
+
+	@Override
+	public void setEndNode(String name) {
+		end.setText("end: " + name);
 	}
 }
