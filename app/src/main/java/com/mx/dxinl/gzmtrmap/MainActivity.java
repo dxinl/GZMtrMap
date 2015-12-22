@@ -1,11 +1,17 @@
 package com.mx.dxinl.gzmtrmap;
 
+import android.Manifest;
+import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -31,8 +37,10 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 	private static final String DB_DIR = "/databases";
 	private static final String DB_NAME = "mtr.db";
 	private static final String SEPARATOR = "/";
+	private static final int MY_PERMISSIONS_REQUEST_EXTERNAL_STORAGE = 48;
 
 	private boolean initialize = true;
+	private boolean nextStep;
 
 	private MtrView mtr;
 	private TextView start;
@@ -44,6 +52,25 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+
+		if (Build.VERSION.SDK_INT >= 23) {
+			int checkReadExternal = ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE);
+			int checkWriteExternal = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+			if (checkReadExternal == PackageManager.PERMISSION_DENIED
+					|| checkWriteExternal == PackageManager.PERMISSION_DENIED) {
+				ActivityCompat.requestPermissions(this,
+						new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE},
+						MY_PERMISSIONS_REQUEST_EXTERNAL_STORAGE);
+			} else {
+				init();
+			}
+		} else {
+			init();
+		}
+
+	}
+
+	private void init() {
 		mtr = (MtrView) findViewById(R.id.mtr);
 		start = (EditText) findViewById(R.id.start);
 		end = (EditText) findViewById(R.id.end);
@@ -56,7 +83,7 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 				if (startNodeName == null || startNodeName.length() == 0) {
 					Toast.makeText(MainActivity.this,
 							String.format(getString(R.string.cannot_be_blank), getString(R.string.start)), Toast.LENGTH_SHORT).show();
-				} else if (endNodeName == null || endNodeName.length() == 0) {
+				} else if (endNodeName.length() == 0) {
 					Toast.makeText(MainActivity.this,
 							String.format(getString(R.string.cannot_be_blank), getString(R.string.end)), Toast.LENGTH_SHORT).show();
 				} else if (startNodeName.equals(endNodeName)) {
@@ -82,17 +109,7 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 		colorMap.put("black", R.color.black);
 		mtr.setColorMap(colorMap);
 		mtr.setChoseNodeListener(this);
-	}
 
-	@Override
-	protected void onResume() {
-		super.onResume();
-
-		if (!initialize) {
-			return;
-		}
-
-		initialize = false;
 		SharedPreferences sp = getSharedPreferences(TAG, MODE_PRIVATE);
 		String version = sp.getString(VERSION, "0.0");
 		String versionName;
@@ -166,6 +183,20 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 	}
 
 	@Override
+	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+		switch (requestCode) {
+			case MY_PERMISSIONS_REQUEST_EXTERNAL_STORAGE:
+				if (grantResults[0] == PackageManager.PERMISSION_DENIED
+						|| grantResults[1] == PackageManager.PERMISSION_DENIED) {
+					new CloseAppTask().execute();
+				} else {
+					init();
+				}
+				break;
+		}
+	}
+
+	@Override
 	public void setStartNode(String name) {
 		start.setText(name);
 	}
@@ -173,5 +204,48 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 	@Override
 	public void setEndNode(String name) {
 		end.setText(name);
+	}
+
+	public class CloseAppTask extends AsyncTask<Object, Integer, Object> {
+		private AlertDialog dialog;
+		String msg = getString(R.string.no_permission) + getString(R.string.close_app);
+
+		@Override
+		protected void onPreExecute() {
+			super.onPreExecute();
+			dialog = new AlertDialog.Builder(MainActivity.this).create();
+			dialog.setCancelable(false);
+			dialog.setTitle(getString(R.string.close));
+			dialog.setMessage(String.format(msg, 3));
+			dialog.show();
+		}
+
+		@Override
+		protected Object doInBackground(Object[] params) {
+			try {
+				Thread.sleep(1000);
+				publishProgress(2);
+				Thread.sleep(1000);
+				publishProgress(1);
+				Thread.sleep(1000);
+				publishProgress(0);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			return null;
+		}
+
+		@Override
+		protected void onProgressUpdate(Integer[] values) {
+			super.onProgressUpdate(values);
+			dialog.setMessage(String.format(msg, values[0]));
+		}
+
+		@Override
+		protected void onPostExecute(Object o) {
+			super.onPostExecute(o);
+			dialog.dismiss();
+			finish();
+		}
 	}
 }
