@@ -30,6 +30,7 @@ public class MtrView extends View {
 
 	private List<Node> nodes;
 	private Map<String, Integer> colorMap;
+	private List<Node> routeNodes;
 	private int maxMapCoordinate;
 	private float unit;
 	private float centerX;
@@ -207,6 +208,10 @@ public class MtrView extends View {
 		boolean isFoundClick = true;
 		if (clickX != 0f && clickY != 0f) {
 			isFoundClick = false;
+			if (routeNodes != null) {
+				routeNodes.clear();
+				routeNodes = null;
+			}
 		}
 
 		List<Node> nodeDrewLine = new ArrayList<>();
@@ -234,6 +239,8 @@ public class MtrView extends View {
 				saveClickY = node.y;
 				isFoundClick = true;
 			} else if (!isFoundClick
+					&& saveClickX != -maxMapCoordinate
+					&& saveClickY != -maxMapCoordinate
 					&& clickX - absoluteX < newUnit * 8f && absoluteX <= clickX
 					&& Math.abs(absoluteY - clickY) < newUnit * 2f && listener != null) {
 				choseNode = node;
@@ -249,6 +256,7 @@ public class MtrView extends View {
 		nodeDrewLine.clear();
 		if (!isFoundClick) {
 			saveClickY = saveClickX = -maxMapCoordinate;
+
 			if (choseNode == null) {
 				return;
 			}
@@ -322,9 +330,14 @@ public class MtrView extends View {
 			if (nodeDrewLine.contains(neighbor)) {
 				continue;
 			}
-			int colorId = getColorId(node, neighbor);
-			paint.setColor(getResources().getColor(colorId));
-			paint.setStrokeWidth(unit);
+			if (routeNodes != null && routeNodes.contains(node) && routeNodes.contains(neighbor)) {
+				paint.setColor(getResources().getColor(R.color.red));
+				paint.setStrokeWidth(unit * 1.5f);
+			} else {
+				int colorId = getColorId(node, neighbor);
+				paint.setColor(getResources().getColor(colorId));
+				paint.setStrokeWidth(unit);
+			}
 			paint.setStyle(Paint.Style.FILL_AND_STROKE);
 			float neighborAbsoluteX = getAbsoluteXCoordinate(neighbor.x, centerX, unit);
 			float neighborAbsoluteY = getAbsoluteYCoordinate(neighbor.y, centerY, unit);
@@ -334,11 +347,16 @@ public class MtrView extends View {
 
 	private void drawCircle(Canvas canvas, Node node,
 	                        float absoluteX, float absoluteY, float radius) {
-		int colorId = getColorId(node.color);
-		paint.setStrokeWidth(unit);
 		paint.setStyle(Paint.Style.FILL_AND_STROKE);
-		paint.setColor(getResources().getColor(colorId));
-		canvas.drawCircle(absoluteX, absoluteY, radius, paint);
+		if (routeNodes != null && routeNodes.contains(node)) {
+			paint.setColor(getResources().getColor(R.color.red));
+			paint.setStrokeWidth(1.25f * radius);
+			canvas.drawCircle(absoluteX, absoluteY, radius * 1.25f, paint);
+		} else {
+			int colorId = getColorId(node.color);
+			paint.setColor(getResources().getColor(colorId));
+			canvas.drawCircle(absoluteX, absoluteY, radius, paint);
+		}
 	}
 
 	private void drawClickCircle(Canvas canvas, float newUnit, float absoluteX, float absoluteY) {
@@ -430,6 +448,7 @@ public class MtrView extends View {
 	}
 
 	public String findRoute(String startName, String endName) {
+		Log.e("names", startName + " " + endName);
 		Node startNode = null;
 		Node endNode = null;
 		for (Node node : nodes) {
@@ -443,11 +462,18 @@ public class MtrView extends View {
 				break;
 			}
 		}
-		return findRoute(startNode, endNode);
+		if (startNode == null) {
+			return String.format(getString(R.string.not_found), getString(R.string.start));
+		} else if (endName == null) {
+			return String.format(getString(R.string.not_found), getString(R.string.end));
+		} else {
+			return findRoute(startNode, endNode);
+		}
 	}
 
 	public String findRoute(Node startNode, Node endNode) {
-		String route = new String();
+		isStart = true;
+		String route = "";
 
 		HashMap<Node, Integer> distances = new HashMap<>();
 		HashMap<Node, Node> preNodes = new HashMap<>();
@@ -491,8 +517,10 @@ public class MtrView extends View {
 		}
 
 		Node node = endNode;
+		routeNodes = new ArrayList<>();
 		while (true) {
 			String name = node.name;
+			routeNodes.add(node);
 			node = preNodes.get(node);
 			if (node != null) {
 				route = joiner + name + route;
@@ -501,6 +529,11 @@ public class MtrView extends View {
 				break;
 			}
 		}
+		invalidate();
 		return route;
+	}
+
+	private String getString(int strId) {
+		return getResources().getString(strId);
 	}
 }

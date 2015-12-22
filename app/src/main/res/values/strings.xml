@@ -3,4 +3,11 @@
 	<string name="copy_db_failed">Moving DB from Assets was failed.</string>
 	<string name="chose_as_start">选为起点</string>
 	<string name="chose_as_end">选为终点</string>
+	<string name="start">起点</string>
+	<string name="end">终点</string>
+	<string name="route">路线</string>
+	<string name="start_equals_end">起点与终点不能相同</string>
+	<string name="not_found">没有找到%s</string>
+	<string name="cannot_be_blank">%s不能为空</string>
+	<string name="find_route">查找路线</string>
 </resources>

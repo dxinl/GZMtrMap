@@ -9,7 +9,10 @@ import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.mx.dxinl.gzmtrmap.Structs.Line;
 import com.mx.dxinl.gzmtrmap.Structs.Node;
@@ -42,12 +45,25 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		mtr = (MtrView) findViewById(R.id.mtr);
-		start = (TextView) findViewById(R.id.start);
-		end = (TextView) findViewById(R.id.end);
-		end.setOnClickListener(new View.OnClickListener() {
+		start = (EditText) findViewById(R.id.start);
+		end = (EditText) findViewById(R.id.end);
+		Button findRouteBtn = (Button) findViewById(R.id.find_route);
+		findRouteBtn.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				Log.e("path", mtr.findRoute(startNodeName, endNodeName));
+				startNodeName = start.getText().toString();
+				endNodeName = end.getText().toString();
+				if (startNodeName == null || startNodeName.length() == 0) {
+					Toast.makeText(MainActivity.this,
+							String.format(getString(R.string.cannot_be_blank), getString(R.string.start)), Toast.LENGTH_SHORT).show();
+				} else if (endNodeName == null || endNodeName.length() == 0) {
+					Toast.makeText(MainActivity.this,
+							String.format(getString(R.string.cannot_be_blank), getString(R.string.end)), Toast.LENGTH_SHORT).show();
+				} else if (startNodeName.equals(endNodeName)) {
+					Toast.makeText(MainActivity.this, getString(R.string.start_equals_end), Toast.LENGTH_SHORT).show();
+				} else {
+					Log.e("path", mtr.findRoute(startNodeName, endNodeName));
+				}
 			}
 		});
 
@@ -151,13 +167,11 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 
 	@Override
 	public void setStartNode(String name) {
-		startNodeName = name;
-		start.setText("start: " + name);
+		start.setText(name);
 	}
 
 	@Override
 	public void setEndNode(String name) {
-		endNodeName = name;
-		end.setText("end: " + name);
+		end.setText(name);
 	}
 }

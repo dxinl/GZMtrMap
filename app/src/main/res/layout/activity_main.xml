@@ -6,21 +6,29 @@
 	android:layout_height="match_parent"
 	tools:context="com.mx.dxinl.gzmtrmap.MainActivity">
 
-	<TextView
-		android:id="@+id/start"
-		android:layout_width="wrap_content"
+	<Button
+		android:id="@+id/find_route"
+		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:layout_alignParentBottom="true"
-		android:text="@string/app_name"/>
+		android:text="@string/find_route"/>
 
-	<TextView
+	<EditText
 		android:id="@+id/end"
-		android:layout_width="wrap_content"
+		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:layout_alignParentBottom="true"
-		android:layout_toEndOf="@id/start"
-		android:layout_toRightOf="@id/start"
-		android:text="@string/app_name"/>
+		android:layout_above="@id/find_route"
+		android:hint="@string/end"
+		android:singleLine="true"/>
+
+	<EditText
+		android:id="@+id/start"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:hint="@string/start"
+		android:layout_above="@id/end"
+		android:nextFocusDown="@id/end"
+		android:singleLine="true"/>
 
 	<com.mx.dxinl.gzmtrmap.MtrView
 		android:id="@+id/mtr"
