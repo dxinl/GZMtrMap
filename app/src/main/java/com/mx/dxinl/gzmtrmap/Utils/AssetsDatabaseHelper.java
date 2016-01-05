@@ -59,22 +59,21 @@ public class AssetsDatabaseHelper {
 	public static SQLiteDatabase openDatabase(Context context, String dbName) {
 		if (DB == null) {
 			try {
+				String pkgName = context.getPackageName();
+				SharedPreferences sp = context.getSharedPreferences(pkgName, Context.MODE_PRIVATE);
+				String curVersionName = sp.getString(VERSION, VERSION);
+				PackageInfo pkgInfo = context.getPackageManager().getPackageInfo(pkgName, 0);
+				String versionName = pkgInfo.versionName;
+
 				String dir = context.getFilesDir().getPath();
 				String path = dir + SEPARATOR + DB_FOLDER + SEPARATOR + dbName;
 				File file = new File(path);
-				if (!file.exists() || !file.isFile()) {
+				if (!file.exists() || !file.isFile() || !curVersionName.equals(versionName)) {
 					if (!copyDBFromAssets(context, dbName)) {
 						return null;
 					}
-				} else {
-					String pkgName = context.getPackageName();
-					SharedPreferences sp = context.getSharedPreferences(pkgName, Context.MODE_PRIVATE);
-					PackageInfo pkgInfo = context.getPackageManager().getPackageInfo(pkgName, 0);
-					String versionName = pkgInfo.versionName;
-					if (!sp.getString(VERSION, VERSION).equals(versionName)) {
-						if (!copyDBFromAssets(context, dbName)) {
-							return null;
-						}
+
+					if (!curVersionName.equals(versionName)) {
 						sp.edit().putString(VERSION, versionName).apply();
 					}
 				}
