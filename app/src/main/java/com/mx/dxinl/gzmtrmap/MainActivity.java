@@ -2,14 +2,11 @@ package com.mx.dxinl.gzmtrmap;
 
 import android.Manifest;
 import android.app.AlertDialog;
-import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -22,10 +19,9 @@ import android.widget.Toast;
 
 import com.mx.dxinl.gzmtrmap.Structs.Line;
 import com.mx.dxinl.gzmtrmap.Structs.Node;
-import com.mx.dxinl.gzmtrmap.Utils.AssetDatabaseOpenHelper;
+import com.mx.dxinl.gzmtrmap.Utils.AssetsDatabaseHelper;
 import com.mx.dxinl.gzmtrmap.Utils.DbUtils;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,14 +29,8 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements ChoseNodeListener {
 	private static final String TAG = "GZMtrMap";
-	private static final String VERSION = "version";
-	private static final String DB_DIR = "/databases";
 	private static final String DB_NAME = "mtr.db";
-	private static final String SEPARATOR = "/";
 	private static final int MY_PERMISSIONS_REQUEST_EXTERNAL_STORAGE = 48;
-
-	private boolean initialize = true;
-	private boolean nextStep;
 
 	private MtrView mtr;
 	private TextView start;
@@ -110,76 +100,7 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 		mtr.setColorMap(colorMap);
 		mtr.setChoseNodeListener(this);
 
-		SharedPreferences sp = getSharedPreferences(TAG, MODE_PRIVATE);
-		String version = sp.getString(VERSION, "0.0");
-		String versionName;
-		try {
-			PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
-			versionName = pInfo.versionName;
-		} catch (PackageManager.NameNotFoundException e) {
-			e.printStackTrace();
-			versionName = "unknown";
-		}
-
-		String dir = getPackageName() + DB_DIR;
-		SQLiteDatabase db = null;
-		if (!version.equals(versionName)) {
-			AssetDatabaseOpenHelper dbHelper = new AssetDatabaseOpenHelper(this, dir, DB_NAME);
-			db = dbHelper.openDatabase();
-
-			SharedPreferences.Editor editor = sp.edit();
-			editor.putString(VERSION, versionName).apply();
-		} else {
-			String dbDir = Environment.getExternalStorageDirectory().getPath() + SEPARATOR + dir + SEPARATOR + DB_NAME;
-			File file = new File(dbDir);
-			if (!file.exists() || !file.isFile()) {
-				AssetDatabaseOpenHelper dbHelper = new AssetDatabaseOpenHelper(this, dir, DB_NAME);
-				db = dbHelper.openDatabase();
-			} else {
-				db = SQLiteDatabase.openDatabase(dbDir, null, SQLiteDatabase.OPEN_READONLY);
-			}
-		}
-
-		if (db != null) {
-			List<Node> nodes = DbUtils.getNodes(db);
-			int maxX = DbUtils.getMaxOrMinValue(db, "node", "x", DbUtils.MAX_OR_MIN.MAX);
-			int minX = DbUtils.getMaxOrMinValue(db, "node", "x", DbUtils.MAX_OR_MIN.MIN);
-			int maxY = DbUtils.getMaxOrMinValue(db, "node", "y", DbUtils.MAX_OR_MIN.MAX);
-			int minY = DbUtils.getMaxOrMinValue(db, "node", "y", DbUtils.MAX_OR_MIN.MIN);
-			int maxMapCoordinate = Math.max(Math.max(maxX, maxY), Math.max(Math.abs(minX), Math.abs(minY)));
-
-			List<Line> lines = DbUtils.getLines(db);
-			for (Node node : nodes) {
-				List<String> lineNames = DbUtils.getLineNames(db, node.name);
-				List<Line> nodeLines = new ArrayList<>();
-				for (String lineName : lineNames) {
-					for (Line line : lines) {
-						if (line.name.equals(lineName)) {
-							nodeLines.add(line);
-							break;
-						}
-					}
-				}
-				node.lines = nodeLines;
-				if (lineNames.size() == 1) {
-					node.color = DbUtils.getColorName(db, lineNames.toArray()[0].toString());
-				} else {
-					node.color = "black";
-				}
-				HashMap<String, Integer> neighborsMap = DbUtils.getNeighbors(db, node.name);
-				HashMap<Node, Integer> neighborsDist = new HashMap<>();
-				for (String neighborName : neighborsMap.keySet()) {
-					for (Node tmpNode : nodes) {
-						if (tmpNode.name.equals(neighborName)) {
-							neighborsDist.put(tmpNode, neighborsMap.get(neighborName));
-							break;
-						}
-					}
-				}
-				node.neighborsDist = neighborsDist;
-			}
-			mtr.setNodes(nodes, maxMapCoordinate);
-		}
+		new DBProcessTask().execute();
 	}
 
 	@Override
@@ -204,6 +125,82 @@ public class MainActivity extends AppCompatActivity implements ChoseNodeListener
 	@Override
 	public void setEndNode(String name) {
 		end.setText(name);
+	}
+
+	public class DBProcessTask extends AsyncTask<Object, Object, List<Node>> {
+		private int maxMapCoordinate;
+		private AlertDialog dialog;
+
+		@Override
+		protected void onPreExecute() {
+			super.onPreExecute();
+			dialog = new AlertDialog.Builder(MainActivity.this)
+					.setIcon(R.mipmap.ic_launcher)
+					.setTitle(R.string.tips)
+					.setMessage(R.string.loading)
+					.setCancelable(false)
+					.create();
+			dialog.show();
+		}
+
+		@Override
+		protected List<Node> doInBackground(Object... params) {
+			SQLiteDatabase db = AssetsDatabaseHelper.openDatabase(MainActivity.this, DB_NAME);
+			if (db != null) {
+				List<Node> nodes = DbUtils.getNodes(db);
+				int maxX = DbUtils.getMaxOrMinValue(db, "node", "x", DbUtils.MAX_OR_MIN.MAX);
+				int minX = DbUtils.getMaxOrMinValue(db, "node", "x", DbUtils.MAX_OR_MIN.MIN);
+				int maxY = DbUtils.getMaxOrMinValue(db, "node", "y", DbUtils.MAX_OR_MIN.MAX);
+				int minY = DbUtils.getMaxOrMinValue(db, "node", "y", DbUtils.MAX_OR_MIN.MIN);
+				maxMapCoordinate = Math.max(Math.max(maxX, maxY), Math.max(Math.abs(minX), Math.abs(minY)));
+
+				List<Line> lines = DbUtils.getLines(db);
+				for (Node node : nodes) {
+					List<String> lineNames = DbUtils.getLineNames(db, node.name);
+					List<Line> nodeLines = new ArrayList<>();
+					for (String lineName : lineNames) {
+						for (Line line : lines) {
+							if (line.name.equals(lineName)) {
+								nodeLines.add(line);
+								break;
+							}
+						}
+					}
+					node.lines = nodeLines;
+					if (lineNames.size() == 1) {
+						node.color = DbUtils.getColorName(db, lineNames.toArray()[0].toString());
+					} else {
+						node.color = "black";
+					}
+					HashMap<String, Integer> neighborsMap = DbUtils.getNeighbors(db, node.name);
+					HashMap<Node, Integer> neighborsDist = new HashMap<>();
+					for (String neighborName : neighborsMap.keySet()) {
+						for (Node tmpNode : nodes) {
+							if (tmpNode.name.equals(neighborName)) {
+								neighborsDist.put(tmpNode, neighborsMap.get(neighborName));
+								break;
+							}
+						}
+					}
+					node.neighborsDist = neighborsDist;
+				}
+
+				return nodes;
+			}
+
+			return null;
+		}
+
+		@Override
+		protected void onPostExecute(List<Node> nodes) {
+			super.onPostExecute(nodes);
+			dialog.dismiss();
+			if (nodes != null) {
+				mtr.setNodes(nodes, maxMapCoordinate);
+			} else {
+				Toast.makeText(MainActivity.this, getString(R.string.load_failed), Toast.LENGTH_SHORT).show();
+			}
+		}
 	}
 
 	public class CloseAppTask extends AsyncTask<Object, Integer, Object> {

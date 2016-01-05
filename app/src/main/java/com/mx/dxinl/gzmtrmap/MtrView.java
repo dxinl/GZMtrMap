@@ -13,6 +13,7 @@ import android.view.View;
 
 import com.mx.dxinl.gzmtrmap.Structs.Line;
 import com.mx.dxinl.gzmtrmap.Structs.Node;
+import com.mx.dxinl.gzmtrmap.Utils.ScreenUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -156,6 +157,27 @@ public class MtrView extends View {
 		float y2 = event.getY(index2);
 
 		return (float) Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+	}
+
+	@Override
+	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+		int width = MeasureSpec.getSize(widthMeasureSpec);
+		int height = MeasureSpec.getSize(heightMeasureSpec);
+		int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+		int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+
+		int tmpWidth = ScreenUtils.getScreenWidth(getContext());
+		int tmpHeight = ScreenUtils.getScreenHeight(getContext());
+		int tmp = tmpWidth < tmpHeight ? tmpWidth : tmpHeight;
+		if (widthMode == MeasureSpec.AT_MOST || widthMode == MeasureSpec.UNSPECIFIED) {
+			width = tmp;
+		}
+
+		if (heightMode == MeasureSpec.AT_MOST || heightMode == MeasureSpec.UNSPECIFIED) {
+			height = tmp;
+		}
+
+		setMeasuredDimension(width, height);
 	}
 
 	@Override

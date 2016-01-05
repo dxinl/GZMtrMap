@@ -14,4 +14,7 @@
 	<string name="close_app">程序将在__%s__秒内自动关闭。</string>
 	<string name="close">关闭程序</string>
 	<string name="create_failed">创建文件失败，请检查是否授予了应用“读写外部存储”权限。</string>
+	<string name="loading">正在加载数据</string>
+	<string name="load_failed">加载数据失败</string>
+	<string name="tips">提示</string>
 </resources>
